@@ -1,0 +1,417 @@
+import { useState, useEffect } from "react";
+import { searchArticles } from "./../../api/searchAPI";
+import RandomPlaceholderInput from "@/components/custom/RandomPlaceholderInput";
+import { Button } from "@/components/ui/button";
+import ArticleColumn from "@/components/shared/ArticleColumn";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { format, subYears } from "date-fns";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { useSearch } from "../searchProvider";
+import { useAuth } from "@/api/authContext";
+import { TwoSlider } from "@/components/ui/MultiSlider";
+
+interface Filter {
+  text: string;
+  selectedOption: string;
+  enabled: boolean;
+}
+
+const joinArrayToSentence = (items: string[], maxAuthors: number = 5): string => {
+  if (items.length === 0) return '';
+  const displayedAuthors = items.slice(0, maxAuthors).join(', ');
+  return items.length > maxAuthors ? `${displayedAuthors} ...` : displayedAuthors;
+};
+
+function formatDate(isoDateString: string): string {
+  const date = new Date(isoDateString);
+  const options: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  };
+  return date.toLocaleDateString('en-US', options);
+}
+
+const Search = () => {
+  const { searchInput } = useSearch();
+  const { user } = useAuth();
+  const userId = user?.id ?? "a28dcb9d-4da7-4470-8a15-f92b5f7058a8";
+  
+  const [formValues, setFormValues] = useState({
+    titlesIncludes: "",
+    categories: "",
+    allTitles: false,
+    allCategories: false,
+  });
+
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchMade, setSearchMade] = useState(false);
+  const [filters, setFilters] = useState<Filter[]>([]);
+
+  // Date slider state and configuration
+  const presentDate = new Date();
+  const startDate = subYears(presentDate, presentDate.getFullYear() - 1990);
+  const [dateRange, setDateRange] = useState([1, 100]); // [startValue, endValue]
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSearchMade(true);
+
+    // Get author filters
+    const authorFilters = filters
+      .filter(f => f.selectedOption === "Author" && f.enabled)
+      .map(f => f.text.trim())
+      .filter(text => text);
+
+    // Convert slider values to dates
+    const startDateValue = linearToLogDate(100 - dateRange[1]);
+    const endDateValue = linearToLogDate(100 - dateRange[0]);
+
+    const criteria = {
+      authors: authorFilters,
+      startDate: startDateValue.toISOString(),
+      endDate: endDateValue.toISOString(),
+      titlesIncludes: formValues.titlesIncludes.split(',').map(title => title.trim()).filter(title => title),
+      abstractsIncludes: [],
+      categories: formValues.categories.split(',').map(category => category.trim()).filter(category => category),
+      allAuthors: false,
+      allTitles: formValues.allTitles,
+      allAbstracts: false,
+      allCategories: formValues.allCategories,
+    };
+
+    try {
+      const res_p_p = 20;
+      const p_n = 1;
+      const results = await searchArticles(userId, res_p_p, p_n, [criteria]);
+      const updatedResults = results.map((article: any) => {
+        const authorsList = article.authors;
+        const authorsSentence = joinArrayToSentence(authorsList);
+        const limitedAbstract = article.abstract.split(' ').length > 40 ? 
+          article.abstract.split(' ').slice(0, 40).join(' ') + '...' : 
+          article.abstract;
+
+        return {
+          ...article,
+          title: article.title,
+          date: formatDate(article.published_date),
+          pdfurl: article.pdf_url,
+          citations: article.citations,
+          authors: authorsSentence,
+          abstract: limitedAbstract
+        };
+      });
+      setSearchResults(updatedResults);
+    } catch (error) {
+      console.error("Error searching articles:", error);
+    }
+  };
+
+  useEffect(() => {
+    const submitFromHome = async () => {
+      if (searchInput) {
+        setSearchMade(true);
+        setFormValues(prev => ({ ...prev, titlesIncludes: searchInput }));
+        
+        const criteria = {
+          authors: filters
+            .filter(f => f.selectedOption === "Author" && f.enabled)
+            .map(f => f.text.trim())
+            .filter(text => text),
+          startDate: linearToLogDate(100 - dateRange[1]).toISOString(),
+          endDate: linearToLogDate(100 - dateRange[0]).toISOString(),
+          titlesIncludes: searchInput.split(',').map(title => title.trim()).filter(title => title),
+          abstractsIncludes: [],
+          categories: formValues.categories.split(',').map(category => category.trim()).filter(category => category),
+          allAuthors: false,
+          allTitles: formValues.allTitles,
+          allAbstracts: false,
+          allCategories: formValues.allCategories,
+        };
+
+        try {
+          const res_p_p = 20;
+          const p_n = 1;
+          const results = await searchArticles(userId, res_p_p, p_n, [criteria]);
+          const updatedResults = results.map((article: any) => {
+            const authorsList = article.authors;
+            const authorsSentence = joinArrayToSentence(authorsList);
+            const limitedAbstract = article.abstract.split(' ').length > 40 ? 
+              article.abstract.split(' ').slice(0, 40).join(' ') + '...' : 
+              article.abstract;
+
+            return {
+              ...article,
+              title: article.title,
+              date: formatDate(article.published_date),
+              pdfurl: article.pdf_url,
+              citations: article.citations,
+              authors: authorsSentence,
+              abstract: limitedAbstract
+            };
+          });
+          setSearchResults(updatedResults);
+        } catch (error) {
+          console.error("Error searching articles:", error);
+        }
+      }
+    };
+
+    submitFromHome();
+  }, [searchInput]);
+
+  // Filter management functions
+  const addFilter = () => {
+    setFilters([...filters, { text: '', selectedOption: 'Type', enabled: true }]);
+  };
+
+  const removeFilter = (index: number) => {
+    setFilters(filters.filter((_, i) => i !== index));
+  };
+
+  const handleTextChange = (index: number, value: string) => {
+    const updatedFilters = [...filters];
+    updatedFilters[index].text = value;
+    setFilters(updatedFilters);
+  };
+
+  const toggleFilter = (index: number) => {
+    setFilters((prevFilters) =>
+      prevFilters.map((f, i) => 
+        i === index ? { ...f, enabled: !f.enabled } : f
+      )
+    );
+  };
+
+  const handleOptionSelect = (index: number, option: string) => {
+    const updatedFilters = [...filters];
+    updatedFilters[index].selectedOption = option;
+    setFilters(updatedFilters);
+  };
+
+  const options = ["Keyword", "Model", "Dataset", "Author"];
+
+  // Date conversion functions
+  const linearToLogDate = (value: number) => {
+    const logValue = Math.log10(value + 1);
+    const proportion = (logValue - Math.log10(1)) / (Math.log10(100) - Math.log10(1));
+    const timeDifference = presentDate.getTime() - startDate.getTime();
+    const timeOffset = timeDifference * proportion;
+    return new Date(presentDate.getTime() - timeOffset);
+  };
+
+  const formatSliderLabel = (value: number) => {
+    const date = linearToLogDate(value);
+    return format(date, "MMM yyyy");
+  };
+
+  const handleSliderChange = (values: number[]) => {
+    setDateRange(values);
+  };
+
+  return (
+    <div className="">
+      <form onSubmit={handleSubmit} className="flex flex-row w-full border-t-2 border-b-2 border-b-stone-100 justify-center min-h-svh">
+        <div className="w-2/12 p-5 h-11/12 flex flex-col"></div>
+
+        {/* Search Bar and Results Section */}
+        <div className="w-7/12 m-5 flex flex-col justify-between">
+          <div className="flex w-full items-center space-x-2">
+            <RandomPlaceholderInput
+              value={formValues.titlesIncludes}
+              onChange={(e) => setFormValues({ ...formValues, titlesIncludes: e.target.value })}
+            />
+            <Button type="submit">Search</Button>
+          </div>
+
+          {/* Filters Dialog */}
+          <div className="p-6">
+            <div className="flex flex-wrap gap-2">
+              <div className="relative px-2 hover:text-gray-500 text-center align-middle text-xs">
+                <button className="text-2xl">
+                  <Dialog>
+                    <DialogTrigger>+</DialogTrigger>
+                    <DialogContent className="-mt-16 pb-10">
+                      <DialogHeader className="text-3xl font-semibold">Filters</DialogHeader>
+                      <div className="relative">
+                        {filters.map((filter, index) => (
+                          <div key={index} className="group flex flex-row justify-between items-center align-middle -my-2">
+                            <div className="justify-start flex flex-row">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger className="pr-5 ml-6 text-lg rounded-md pl-2 max-w-1/4 hover:bg-stone-100 font-semibold flex flex-row items-center">
+                                  {filter.selectedOption}
+                                  <svg
+                                    className="w-6 h-6 ml-2 -mr-1"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    width="0.5em"
+                                    height="0.5em"
+                                    fill="#a8a29e"
+                                  >
+                                    <path d="M16.293 9.293L12 13.586L7.707 9.293l-1.414 1.414L12 16.414l5.707-5.707z" />
+                                  </svg>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="w-56">
+                                  {options.map((option) => (
+                                    <DropdownMenuItem
+                                      key={option}
+                                      className="text-lg"
+                                      onClick={() => handleOptionSelect(index, option)}
+                                    >
+                                      {option}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+
+                              <div className="w-2/4 m-1 my-2 ml-5 text-lg flex flex-row">
+                                <textarea
+                                  placeholder="Enter filter text"
+                                  value={filter.text}
+                                  rows={1}
+                                  className="border-none bg-transparent outline-none text-stone-800 placeholder-stone-400 w-3/4 resize-none overflow-y-auto"
+                                  onChange={(e) => handleTextChange(index, e.target.value)}
+                                  onInput={(e) => {
+                                    const target = e.target as HTMLTextAreaElement;
+                                    target.style.height = '';
+                                    target.style.height = `${target.scrollHeight}px`;
+                                  }}
+                                ></textarea>
+                              </div>
+                            </div>
+
+                            <div 
+                              onClick={() => removeFilter(index)}
+                              className="opacity-0 group-hover:opacity-100 hover:bg-stone-100 rounded-md w-6 h-6 flex items-center justify-center cursor-pointer"
+                            >
+                              <svg width="20px" height="20px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M5 5L19 19M5 19L19 5" stroke="#a8a29e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </div>
+                          </div>
+                        ))}
+
+                        <div className={`absolute left-0 bottom-0 transform ${filters.length === 0 ? 'translate-y-4' : 'mb-0.5'} -translate-x-1`}>
+                          <button
+                            onClick={addFilter}
+                            className="hover:bg-stone-100 rounded-md w-6 h-6 flex items-center justify-center cursor-pointer"
+                          >
+                            <svg
+                              width="15px"
+                              height="15px"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              transform="rotate(45)"
+                            >
+                              <path
+                                d="M5 5L19 19M5 19L19 5"
+                                stroke="#a8a29e"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </button>
+              </div>
+
+              {/* Display Active Filters */}
+              {filters.map((filter, index) => (
+                filter.text && (
+                  <div key={index} className="relative">
+                    <button
+                      className={`px-4 py-2 border-2 rounded-3xl hover:bg-gray-50 active:bg-gray-200 focus:outline-none text-sm ${filter.enabled ? 'text-black' : 'text-gray-400'}`}
+                      onClick={() => toggleFilter(index)}
+                    >
+                      {filter.text}
+                    </button>
+                  </div>
+                )
+              ))}
+            </div>
+          </div>
+
+          
+          {/* Results */}
+          <div className="h-full align-top justify-start mt-6">
+            {searchMade && (
+              <ArticleColumn articles={searchResults} />
+            )}
+          </div>
+
+          {/* Pagination */}
+          <div className="p-5">
+            <Pagination className="mb-5">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious href="#" />
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationLink href="#">1</PaginationLink>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationLink href="#">2</PaginationLink>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationLink href="#">3</PaginationLink>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationEllipsis />
+                </PaginationItem>
+                <PaginationNext href="#" />
+              </PaginationContent>
+            </Pagination>
+          </div>
+        </div>
+
+        {/* Right Sidebar - Date Range Slider */}
+        <div className="w-3/12 p-5 h-11/12 flex flex-col px-12">
+          <div className="w-full space-y-6">
+            {/* Date Range Section */}
+            <div className="flex flex-col space-y-2">
+              <label className="text-sm font-semibold">
+                Date Range:
+              </label>
+              <TwoSlider
+                className="mt-6"
+                minStepsBetweenThumbs={1}
+                max={100}
+                min={1}
+                step={1}
+                value={dateRange}
+                onValueChange={handleSliderChange}
+                formatLabel={(value) => formatSliderLabel(100 - value)}
+              />
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default Search;
