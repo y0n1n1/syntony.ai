@@ -1,0 +1,107 @@
+{
+    "taxonomy":{
+        "areas":["LLM", "Finance"],
+        "topics":["prompt engineering", "pre-training"]
+    },
+    "research_focus": {
+      "learning_type": ["supervised", "unsupervised", "reinforcement", "semi/self-supervised", "other"],
+      "primary_objective": "Primary goal of the experiment",
+      "key_findings": "Summary of results",
+      "classification_task": true,
+      "regression_task": true
+    },
+    "data": {
+      "datasets_used": ["Dataset 1", "Dataset 2"],
+      "datasets_public": [true, false],
+      "dataset_size": "Number of samples or size in GB",
+      "modalities": ["images", "text", "time series"],
+      "synthetic_data": true
+    },
+    "model": {
+      "known_models_used": ["Model 1", "Model 2"],
+      "new_architecture": true,
+      "modalities": ["images", "text", "time series"],
+      "pretrained_models": {
+        "used": true,
+        "models": ["Pretrained Model 1", "Pretrained Model 2"]
+      }
+    },
+    "algorithms": {
+      "used_algorithms": ["Algorithm 1", "Algorithm 2"],
+      "novel_algorithm": {
+        "introduced": true,
+        "description": "Description of new algorithm"
+      },
+      "optimization_techniques": ["Gradient Descent", "Adam"],
+      "regularization_techniques": ["dropout", "weight decay"],
+      "efficiency_improvements": true,
+      "model_pruning_quantization_sparsity": {
+        "used": true,
+        "techniques": ["pruning", "quantization", "sparsity"]
+      }
+    },
+    "theoretical_contributions": {
+      "theory_or_proofs": true,
+      "novel_metrics": true
+    },
+    "experimental_details": {
+      "training_frameworks": ["PyTorch", "TensorFlow"],
+      "training_time": "Time in hours/days",
+      "hardware": ["nvdia H100"],
+      "computational_resources": "e.g., Number of GPUs used"
+    },
+    "visualizations": ["confusion matrix", "precision-recall curve"],
+    "software_tools": {
+      "used_tools": ["tensorflow", "pytorch"],
+      "new_tools": true
+    },
+    "reproducibility": {
+      "code_availability": true,
+      "documentation": true
+    },
+    "ethical_considerations": ["fairness_in_AI","bias_discussion","bias_mitigation"],
+    "applications": {
+      "domain": ["healthcare", "finance", "autonomous vehicles"],
+      "real_world_deployment": true
+    },
+    "funding_and_collaborations": {
+      "grants_or_funding": {
+        "exists": true,
+        "organizations": ["Grant 1", "Grant 2"]
+      },
+      "collaborations": {
+        "exists": true,
+        "partners": ["University", "Industry"]
+      }
+    },
+    "deep_learning": {
+      "techniques_used": ["CNN", "RNN", "Transformers"],
+      "training_challenges_addressed": ["vanishing gradients", "optimization"],
+      "new_architecture_introduced": true,
+      "language_modeling": {
+        "focus": true,
+        "challenges": ["multilingual models", "semantic learning"]
+      },
+      "vision_tasks": {
+        "focus": true,
+        "techniques": ["CNN", "Vision Transformers"],
+        "specialized_topics": ["video processing", "3D vision"],
+        "multimodal_integration": true
+      }
+    },
+    "advanced_techniques": {
+      "learning_efficiency_focus": true,
+      "methods": {
+        "optimization_algorithms": ["Adam", "SGD"],
+        "model_compression": ["pruning", "sparsity", "quantization"],
+        "transfer_learning": true,
+        "scalable_architectures": ["Mixture of Experts"]
+      }
+    }
+  }
+  
+
+
+
+
+
